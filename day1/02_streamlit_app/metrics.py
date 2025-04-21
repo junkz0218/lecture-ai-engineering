@@ -60,7 +60,7 @@ def calculate_metrics(answer, correct_answer):
             candidate = nltk_word_tokenize(answer_lower)
             # ゼロ除算エラーを防ぐ
             if candidate:
-                bleu_score = nltk_sentence_bleu(reference, candidate, weights=(0.25, 0.25, 0.25, 0.25)) # 4-gram BLEU
+                bleu_score = nltk_sentence_bleu(reference, candidate, weights=(0.5, 0.5)) # 2-gram BLEUに変更
             else:
                 bleu_score = 0.0
         except Exception as e:
