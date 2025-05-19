@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from mlflow.models.signature import infer_signature
+import time
 
 
 # データ準備
@@ -75,6 +76,30 @@ def log_model(model, accuracy, params):
         # accurecyとparmsは改行して表示
         print(f"モデルのログ記録値 \naccuracy: {accuracy}\nparams: {params}")
 
+#テスト処理 <<新>>
+def test_performance(model, X_test, y_test ):
+    start_time = time.time()
+    predictions = model.predict(X_test)
+    predictions_time = time.time() - start_time
+    accuracy = accuracy_score(y_test, predictions)    
+
+    mlflow.log_metric("predictions_time", predictions_time)
+    mlflow.log_metric("test.accuracy", accuracy)
+
+    try:
+        prev_model = mlflow.sklearn.load_model(f"models:/{model_name}/Production")
+        prev_predictions = prev_model.predict(X_test)
+        prev_accuracy = accuracy_score(y_test, prev_predictions)
+        mlflow.log_metric("prev_model_accuracy", prev_accuracy)
+        print(f"[比較] 過去モデルのAccuracy: {prev_accuracy:.4f}")
+
+        if accuracy >= prev_accuracy:
+            print("[比較結果] 合格")
+        else:
+            print("新モデルの精度が過去モデルよりも劣っています")
+    except Exception as e:
+        print("過去モデルとの比較に失敗しました。:", e)
+
 
 # メイン処理
 if __name__ == "__main__":
@@ -114,6 +139,7 @@ if __name__ == "__main__":
 
     # モデル保存
     log_model(model, accuracy, params)
+    test_performance(model, X_test, y_test)
 
     model_dir = "models"
     os.makedirs(model_dir, exist_ok=True)
