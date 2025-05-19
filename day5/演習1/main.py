@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from mlflow.models.signature import infer_signature
 import time
+from mlflow.tracking import MlflowClient
 
 
 # データ準備
@@ -54,8 +55,9 @@ def train_and_evaluate(
 
 
 # モデル保存
-def log_model(model, accuracy, params):
-    with mlflow.start_run():
+def log_model(model, accuracy, params, model_name = "TitanicModel"):
+    with mlflow.start_run() as run:
+        run_id = run.info.run_id
         # パラメータをログ
         for param_name, param_value in params.items():
             mlflow.log_param(param_name, param_value)
@@ -76,8 +78,19 @@ def log_model(model, accuracy, params):
         # accurecyとparmsは改行して表示
         print(f"モデルのログ記録値 \naccuracy: {accuracy}\nparams: {params}")
 
+        model_uri = f"runs:/{run_id}/model"
+        result = mlflow.register_model(model_uri=model_uri, name=model_name)
+        print(f"モデルをレジストリに登録しました: name={result.name}, version={result.version}")
+
+        client = MlflowClient()
+        client.transition_model_version_stage(
+            name=model_name,
+            version=result.version,
+            stage="Production",
+            archive_existing_versions=True  
+        )
 #テスト処理 <<新>>
-def test_performance(model, X_test, y_test ):
+def test_performance(model, X_test, y_test, model_name = "TitanicModel"):
     start_time = time.time()
     predictions = model.predict(X_test)
     predictions_time = time.time() - start_time
